@@ -32,6 +32,7 @@ def main():
                                      "--bao", str(bao), "--output", str(output)],
                                     cwd=root, capture_output=True, text=True, timeout=120)
             assert result.returncode == code, (name, result.returncode, result.stdout, result.stderr)
+            assert (output / "report.json").is_file(), (name, "no report", result.stdout, result.stderr)
             report = json.loads((output / "report.json").read_text())
             assert report["summary"]["exit_code"] == code
             serialized = (output / "report.json").read_text() + (output / "index.html").read_text()

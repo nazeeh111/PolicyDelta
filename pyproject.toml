@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "policydelta"
+version = "0.1.0"
+description = "Request-level regression evidence for OpenBao policy changes"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+readme = "README.md"
+authors = [{name = "nazeeh111"}]
+dependencies = []
+
+[project.scripts]
+policy-delta = "policy_delta.__main__:main"
+
+[tool.setuptools]
+packages = ["policy_delta"]

@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+from xml.etree import ElementTree as ET
 
 
 def assess(report: dict) -> dict:
@@ -86,9 +87,75 @@ main{{max-width:1500px;margin:auto;padding:38px 36px 64px}}header{{border-bottom
 <footer>Exit code {summary["exit_code"]}. {summary["capability_invisible_expansions"]} newly allowed request(s) have unchanged capability lists.</footer></main></body></html>'''
 
 
+def _xml_safe(value: object, *, attribute: bool = False) -> str:
+    """Replace controls, surrogates, and noncharacters before XML serialization."""
+    safe = []
+    for character in str(value):
+        codepoint = ord(character)
+        if ((codepoint < 0x20 and (attribute or codepoint not in (9, 10, 13)))
+                or 0x7F <= codepoint <= 0x9F
+                or 0xD800 <= codepoint <= 0xDFFF
+                or 0xFDD0 <= codepoint <= 0xFDEF
+                or codepoint & 0xFFFF in (0xFFFE, 0xFFFF)):
+            safe.append("\ufffd")
+        else:
+            safe.append(character)
+    return "".join(safe)
+
+
+def render_junit(report: dict) -> str:
+    """Render assessed policy cases as one JUnit testcase each."""
+    outcomes = []
+    for case in report["cases"]:
+        findings = case["findings"]
+        if "execution error" in findings:
+            outcomes.append("error")
+        elif "expectation mismatch" in findings or "unapproved expansion" in findings:
+            outcomes.append("failure")
+        else:
+            outcomes.append("pass")
+    counts = {
+        "tests": str(len(outcomes)),
+        "failures": str(outcomes.count("failure")),
+        "errors": str(outcomes.count("error")),
+    }
+    root = ET.Element("testsuites", counts)
+    suite_name = _xml_safe(report["suite_name"], attribute=True)
+    suite = ET.SubElement(root, "testsuite", {"name": suite_name, **counts})
+    for case, outcome in zip(report["cases"], outcomes):
+        item = ET.SubElement(
+            suite, "testcase", {"classname": f"PolicyDelta.{suite_name}",
+                                "name": _xml_safe(case["id"], attribute=True)}
+        )
+        evidence = [f"{case['method']} {case['path']} · principal {case['principal']}"]
+        for variant in ("before", "after"):
+            observed = case[variant]
+            status = observed["status"] if observed["status"] is not None else "unavailable"
+            line = (f"{variant}: expected {case['expect'][variant]}, observed "
+                    f"{observed['decision']} (HTTP {status})")
+            if observed.get("error"):
+                line += f"; error {observed['error']}"
+            evidence.append(line)
+        if case["findings"]:
+            evidence.append("Findings: " + ", ".join(case["findings"]))
+        detail = _xml_safe("\n".join(evidence))
+        if outcome != "pass":
+            message = ("execution error" if outcome == "error" else
+                       ", ".join(finding for finding in case["findings"]
+                                 if finding in ("expectation mismatch", "unapproved expansion")))
+            ET.SubElement(item, outcome, {"message": message}).text = detail
+        ET.SubElement(item, "system-out").text = detail
+    ET.indent(root, space="  ")
+    return '<?xml version="1.0" encoding="utf-8"?>\n' + ET.tostring(root, encoding="unicode") + "\n"
+
+
 def write_reports(report: dict, output: Path) -> None:
     """Fresh directories only; atomic files; remove our incomplete output on failure."""
-    payloads = {"report.json": json.dumps(report, indent=2, allow_nan=False) + "\n", "index.html": render_html(report)}
+    payloads = {
+        "report.json": json.dumps(report, indent=2, allow_nan=False) + "\n",
+        "index.html": render_html(report),
+        "junit.xml": render_junit(report),
+    }
     output.mkdir(mode=0o700)
     owned = []
     try:

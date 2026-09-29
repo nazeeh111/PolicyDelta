@@ -4,7 +4,7 @@
 
 `run_suite` launches one OpenBao process per revision. Each case resets the declared mounts, seeds their data, creates a token for its principal, queries capabilities, and sends the declared HTTP request with that token. Capability metadata explains the result but never substitutes for it. The response status determines the outcome; secret bodies are discarded.
 
-`assess` compares observed decisions with expectations and marks permission expansions. A new allow needs a matching expectation and a case-specific approval. An execution failure outranks an otherwise passing comparison. `write_reports` creates a fresh directory and replaces each completed temporary file atomically; if writing fails, it removes its own incomplete output. The pair is intended for inspection after the command exits, not concurrent streaming consumption.
+`assess` compares observed decisions with expectations and marks permission expansions. A new allow needs a matching expectation and a case-specific approval. An execution failure outranks an otherwise passing comparison. The JUnit renderer maps each assessed case to one testcase while keeping the JSON finding counters intact. `write_reports` creates a fresh directory and replaces each completed temporary file atomically; if writing fails, it removes its own incomplete output. The three-file set is intended for inspection after the command exits, not concurrent streaming consumption.
 
 ## Why reset before every case?
 

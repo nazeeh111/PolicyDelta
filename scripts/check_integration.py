@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from xml.etree import ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 CHANGES = {"sibling-prefix", "other-team", "forbidden-parameter", "missing-parameter"}
@@ -33,15 +34,26 @@ def main():
                                     cwd=root, capture_output=True, text=True, timeout=120)
             assert result.returncode == code, (name, result.returncode, result.stdout, result.stderr)
             assert (output / "report.json").is_file(), (name, "no report", result.stdout, result.stderr)
+            assert (output / "junit.xml").is_file(), (name, "no JUnit report", result.stdout, result.stderr)
             report = json.loads((output / "report.json").read_text())
             assert report["summary"]["exit_code"] == code
-            serialized = (output / "report.json").read_text() + (output / "index.html").read_text()
+            serialized = (output / "report.json").read_text() + (output / "index.html").read_text() + (output / "junit.xml").read_text()
             for fixture_value in ("synthetic-fixture-only", "replacement-fixture", "reset-me"):
                 assert fixture_value not in serialized, "fixture data leaked into report"
             print(f"{name}: exit {code}, {len(report['cases'])} cases")
             return report
 
+        def junit(name, tests, failures, errors):
+            suite = ET.parse(root / name / "junit.xml").getroot().find("testsuite")
+            assert suite is not None
+            observed = tuple(int(suite.attrib[key]) for key in ("tests", "failures", "errors"))
+            assert observed == (tests, failures, errors), (name, observed)
+            assert len(suite.findall("testcase")) == tests
+            return {case.attrib["name"]: case for case in suite.findall("testcase")}
+
         expanded = run("expansion", 1)
+        expansion_cases = junit("expansion", 11, 4, 0)
+        assert {name for name, case in expansion_cases.items() if case.find("failure") is not None} == CHANGES
         assert expanded["summary"]["errors"] == 0
         assert expanded["summary"]["mismatches"] == 4
         changed = {c["id"] for c in expanded["cases"] if "unapproved expansion" in c["findings"]}
@@ -52,8 +64,11 @@ def main():
             if case["id"] in {"delete-fixture", "read-after-delete"}:
                 assert case["before"]["decision"] == case["after"]["decision"] == "allow"
         unchanged = run("unchanged", 0)
+        junit("unchanged", 11, 0, 0)
         assert unchanged["summary"]["expansions"] == 0
         approved = run("approved", 0)
+        approved_cases = junit("approved", 11, 0, 0)
+        assert "approved expansion" in approved_cases["sibling-prefix"].findtext("system-out")
         assert approved["summary"]["expansions"] == 4
         assert approved["summary"]["unapproved_expansions"] == 0
 
@@ -62,8 +77,19 @@ def main():
         missing["cases"] = [dict(base["cases"][0], path="ci/data/build/absent")]
         (examples / "missing.json").write_text(json.dumps(missing))
         error = run("missing", 2)
+        missing_cases = junit("missing", 1, 0, 1)
+        assert missing_cases["build-read"].find("error") is not None
         assert error["cases"][0]["before"]["status"] == 404
         assert error["cases"][0]["before"]["decision"] == "error"
+
+        mixed = deepcopy(json.loads((examples / "expansion.json").read_text()))
+        missing_case = dict(deepcopy(base["cases"][0]), id="missing-fixture", path="ci/data/build/absent")
+        mixed["cases"] = [next(case for case in mixed["cases"] if case["id"] == "sibling-prefix"), missing_case]
+        (examples / "mixed.json").write_text(json.dumps(mixed))
+        run("mixed", 2)
+        mixed_cases = junit("mixed", 2, 1, 1)
+        assert mixed_cases["sibling-prefix"].find("failure") is not None
+        assert mixed_cases["missing-fixture"].find("error") is not None
 
         # Dev mode has a default secret/ mount. Explicit fixtures must reset it too.
         default = deepcopy(base)
@@ -81,7 +107,8 @@ def main():
                                    cwd=root, capture_output=True, text=True, timeout=10)
         assert collision.returncode == 2 and "already exists" in collision.stderr
         assert (root / "unchanged/report.json").read_bytes() == original
-        invalid = deepcopy(base); invalid["cases"] = []
+        invalid = deepcopy(base)
+        invalid["cases"] = []
         (examples / "invalid.json").write_text(json.dumps(invalid))
         invalid_run = subprocess.run([sys.executable, "-m", "policy_delta", str(examples / "invalid.json"),
                                       "--bao", str(root / "missing-bao"), "--output", str(root / "invalid")],

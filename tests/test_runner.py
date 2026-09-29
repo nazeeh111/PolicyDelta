@@ -64,7 +64,15 @@ class RunnerTests(unittest.TestCase):
         process = FakeProcess(marker_ready=False)
         with patch.object(runner, "_STARTUP_SECONDS", 0.01), \
              patch.object(runner, "_request", return_value=(200, {})) as request:
-            with self.assertRaisesRegex(runner.RunError, "startup_timeout"):
+            with self.assertRaisesRegex(runner.RunError, "startup_marker_timeout"):
+                runner._wait_ready(process, 12345, "private-root-token")
+        request.assert_not_called()
+
+    def test_health_timeout_is_distinct_from_marker_timeout(self):
+        process = FakeProcess()
+        with patch.object(runner, "_STARTUP_SECONDS", 0), \
+             patch.object(runner, "_request") as request:
+            with self.assertRaisesRegex(runner.RunError, "startup_health_timeout"):
                 runner._wait_ready(process, 12345, "private-root-token")
         request.assert_not_called()
 

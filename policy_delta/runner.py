@@ -196,7 +196,7 @@ def _wait_ready(process: subprocess.Popen, port: int, root_token: str) -> None:
             raise RunError("server_exited_during_startup")
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            raise RunError("startup_timeout")
+            raise RunError("startup_marker_timeout")
         started.wait(timeout=min(0.1, remaining))
     while time.monotonic() < deadline:
         if process.poll() is not None:
@@ -207,7 +207,7 @@ def _wait_ready(process: subprocess.Popen, port: int, root_token: str) -> None:
         except (OSError, http.client.HTTPException, TimeoutError):
             pass
         time.sleep(0.1)
-    raise RunError("startup_timeout")
+    raise RunError("startup_health_timeout")
 
 
 def _admin(port: int, method: str, path: str, root_token: str, body: dict | None = None,

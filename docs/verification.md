@@ -4,7 +4,7 @@
 
 On macOS arm64 with Python 3.14 and the previously verified official OpenBao 2.7.0 executable:
 
-- 47 unit tests passed. New report tests parsed JUnit XML, checked one outcome per case with error precedence, verified XML-invalid suite-name controls are replaced, and confirmed an injected third-file write failure removes the full output directory.
+- 48 unit tests passed. New report tests parsed JUnit XML, checked one outcome per case with error precedence, verified XML-invalid suite-name controls are replaced, and confirmed an injected third-file write failure removes the full output directory. A startup test distinguishes marker timeout from health-probe timeout without weakening the marker gate.
 - The installed 0.2.0 package ran from a temporary directory against disposable loopback servers. JUnit contained 11 testcases and four failures for the expansion example; 11 passing cases for unchanged and approved examples; one error for a missing fixture; and one failure plus one error in a mixed two-case suite. The approved expansion remained a passing testcase with before/after evidence.
 - The integration check included JUnit in its synthetic fixture-value exclusion check. Existing collision, invalid-input, default-mount, and foreign-listener checks passed.
 

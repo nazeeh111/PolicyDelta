@@ -151,7 +151,8 @@ def _start_server(bao_path: Path, port: int, root_token: str) -> subprocess.Pope
             [str(bao_path), "server", "-dev", "-dev-no-store-token",
              f"-dev-listen-address=127.0.0.1:{port}"],
             env=_clean_env(root_token), cwd=Path(__file__).resolve().parent,
-            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            # The owned readiness marker is stdout; concurrent stderr logs must not join its line.
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         )
         started = threading.Event()
         stop = threading.Event()

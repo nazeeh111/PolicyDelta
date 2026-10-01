@@ -4,6 +4,9 @@ import io
 import json
 import os
 import threading
+import sys
+import tempfile
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 from policy_delta import runner
@@ -99,3 +102,28 @@ class StartupDiagnosticsTests(unittest.TestCase):
         with patch('policy_delta.suite.load_suite', return_value={}), patch('policy_delta.runner.run_suite', side_effect=runner.RunError('admin_request_failed')), contextlib.redirect_stderr(captured):
             self.assertEqual(main(['not-read.json', '--bao', 'not-started', '--output', 'not-created-startup-report']), 2)
         self.assertEqual(captured.getvalue(), 'PolicyDelta: admin_request_failed\n')
+
+    def test_stderr_fragment_cannot_corrupt_owned_stdout_marker(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            executable = Path(temporary) / "fake-bao"
+            executable.write_text(
+                "#!" + sys.executable + "\n"
+                "import os, time\n"
+                "os.write(2, b'concurrent-log-fragment ')\n"
+                "os.write(1, b'==> OpenBao server started!\\n')\n"
+                "time.sleep(10)\n"
+            )
+            executable.chmod(0o700)
+            process = runner._start_server(executable, 12345, "synthetic-test-token")
+            try:
+                with patch.object(runner, "_STARTUP_SECONDS", 2), \
+                     patch.object(runner, "_request", return_value=(200, {})) as request:
+                    runner._wait_ready(process, 12345, "synthetic-test-token")
+                request.assert_called_once_with(12345, "GET", "sys/health", "")
+                observed = process._policy_delta_startup_diagnostics.snapshot()
+                self.assertEqual(observed["marker_lines"], 1)
+                self.assertEqual(observed["marker_extra_lines"], 0)
+            finally:
+                runner._stop_server(process)
+            self.assertIsNotNone(process.poll())
+            self.assertFalse(process._policy_delta_output_thread.is_alive())

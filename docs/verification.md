@@ -2,11 +2,15 @@
 
 ## Startup diagnostics, October 1, 2026
 
-The [Linux Python 3.11 run](https://github.com/nazeeh111/PolicyDelta/actions/runs/36930725139) passed unit tests and CLI installation but timed out waiting for the owned server's startup marker during the approved example. Python 3.14 passed the same integration. The application source was unchanged by the workflow update. The failure's cause remains unknown.
+The [Linux Python 3.11 run](https://github.com/nazeeh111/PolicyDelta/actions/runs/36930725139) passed unit tests and CLI installation but timed out waiting for the owned server's startup marker during the approved example. Python 3.14 passed the same integration. The application source was unchanged by the workflow update. That run did not capture enough evidence to identify its exact cause.
 
-Startup failures now retain the original error code and add a separate diagnostic line with numeric output counts, reader state, process exit status, elapsed time and health-request count. Diagnostics contain no server output, tokens, fixture values, paths or environment data. The 15-second bound, complete owned marker requirement and cleanup are preserved; this is better failure evidence, not a claimed timeout fix.
+Startup failures now retain the original error code and add a separate diagnostic line with numeric output counts, reader state, process exit status, elapsed time and health-request count. Diagnostics contain no server output, tokens, fixture values, paths or environment data. The 15-second bound, complete owned marker requirement and cleanup are preserved; this adds failure evidence without relaxing readiness.
 
-On macOS arm64/Python 3.14, all 56 unit tests passed, including eight diagnostic and privacy checks. The source integration passed expansion, unchanged, approved, missing, mixed and default-mount cases, report collision, invalid input and the occupied foreign-listener check. This local invocation used the current source via `PYTHONPATH`, not a newly installed wheel. Eight separate unchanged-source startup probes passed locally; they did not reproduce the Linux failure. Hosted installed-package checks on both declared Python versions are required before merge.
+The diagnostic [pull-request run](https://github.com/nazeeh111/PolicyDelta/actions/runs/36933912737) reproduced the timeout on Python 3.14 and captured a running reader and process, zero health requests, and one complete marker line with extra text. OpenBao's pinned [server source](https://github.com/openbao/openbao/blob/v2.7.0/internal/command/server.go) sends its marker to stdout and logs to stderr. Combining those streams allowed log fragments to corrupt the exact marker line. Stderr is now discarded separately, while stdout retains the same complete-marker gate.
+
+A deterministic child-process test reproduces the timeout when a stderr fragment precedes the stdout marker in the merged pipe, then passes with separated streams. The fix removes that demonstrated contamination channel; it does not promise to eliminate every possible startup failure.
+
+On macOS arm64/Python 3.14, all 57 unit tests passed, including nine diagnostic, privacy and stream-separation checks. The source integration passed expansion, unchanged, approved, missing, mixed and default-mount cases, report collision, invalid input and the occupied foreign-listener check. This local invocation used the current source via `PYTHONPATH`, not a newly installed wheel. Eight separate unchanged-source startup probes passed locally; they did not reproduce the Linux failure. Hosted installed-package checks on both declared Python versions are required before merge.
 
 ## Local v0.2.0 checks, September 29, 2026
 

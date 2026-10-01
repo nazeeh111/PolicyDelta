@@ -19,6 +19,10 @@ import time
 class RunError(RuntimeError):
     """A sanitized runtime failure that invalidates the whole run."""
 
+    def __init__(self, code: str, *, startup_diagnostics: dict | None = None):
+        super().__init__(code)
+        self.startup_diagnostics = startup_diagnostics
+
 
 _VERSION = "OpenBao 2.7.0"
 _STARTUP_SECONDS = 15
@@ -27,6 +31,40 @@ _SHUTDOWN_SECONDS = 5
 _MAX_ADMIN_RESPONSE = 1024 * 1024
 _MAX_OUTPUT_LINE = 8192
 _STARTED_LINE = b"==> OpenBao server started!"
+
+
+class _StartupDiagnostics:
+    """Fixed numeric counters and reader state, never child output."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._values = dict(bytes_seen=0, complete_lines=0, marker_lines=0,
+                            marker_extra_lines=0, oversized_lines=0,
+                            drain_state="running")
+
+    def increment(self, name: str, amount: int = 1) -> None:
+        with self._lock:
+            self._values[name] += amount
+
+    def state(self, value: str) -> None:
+        with self._lock:
+            self._values["drain_state"] = value
+
+    def snapshot(self) -> dict:
+        with self._lock:
+            return self._values.copy()
+
+
+def _startup_failure(process, code: str, began: float, health_checks: int,
+                     process_exit: int | None = None) -> RunError:
+    counters = getattr(process, "_policy_delta_startup_diagnostics", None)
+    details = counters.snapshot() if counters is not None else {"drain_state": "unavailable"}
+    reader = getattr(process, "_policy_delta_output_thread", None)
+    marker = getattr(process, "_policy_delta_started", None)
+    details.update(elapsed_ms=max(0, int((time.monotonic() - began) * 1000)),
+                   health_checks=health_checks, marker_seen=bool(marker and marker.is_set()),
+                   reader_alive=bool(reader and reader.is_alive()), process_exit=process_exit)
+    return RunError(code, startup_diagnostics=details)
 
 
 def _clean_env(root_token: str) -> dict[str, str]:
@@ -57,10 +95,12 @@ def _free_port() -> int:
         raise RunError("port_allocation_failed") from None
 
 
-def _drain_server_output(output, started: threading.Event, stop: threading.Event) -> None:
+def _drain_server_output(output, started: threading.Event, stop: threading.Event,
+                         diagnostics: _StartupDiagnostics | None = None) -> None:
     """Discard child output, retaining only a bounded partial line for readiness."""
     pending = bytearray()
     discard_line = False
+    diagnostics = diagnostics if diagnostics is not None else _StartupDiagnostics()
     try:
         with selectors.DefaultSelector() as selector:
             selector.register(output, selectors.EVENT_READ)
@@ -69,7 +109,9 @@ def _drain_server_output(output, started: threading.Event, stop: threading.Event
                     continue
                 chunk = os.read(output.fileno(), 4096)
                 if not chunk:
+                    diagnostics.state("eof")
                     return
+                diagnostics.increment("bytes_seen", len(chunk))
                 position = 0
                 while position < len(chunk):
                     newline = chunk.find(b"\n", position)
@@ -79,16 +121,26 @@ def _drain_server_output(output, started: threading.Event, stop: threading.Event
                         if len(pending) + len(part) > _MAX_OUTPUT_LINE:
                             pending.clear()
                             discard_line = True
+                            diagnostics.increment("oversized_lines")
                         else:
                             pending.extend(part)
                     if newline < 0:
                         break
-                    if not discard_line and bytes(pending).rstrip(b"\r") == _STARTED_LINE:
-                        started.set()
+                    diagnostics.increment("complete_lines")
+                    if not discard_line:
+                        line = bytes(pending).rstrip(b"\r")
+                        if line == _STARTED_LINE:
+                            diagnostics.increment("marker_lines")
+                            started.set()
+                        elif _STARTED_LINE in line:
+                            diagnostics.increment("marker_extra_lines")
+                        del line
                     pending.clear()
                     discard_line = False
                     position = newline + 1
+            diagnostics.state("stopped")
     except (OSError, ValueError):
+        diagnostics.state("io_error")
         return
 
 
@@ -99,16 +151,19 @@ def _start_server(bao_path: Path, port: int, root_token: str) -> subprocess.Pope
             [str(bao_path), "server", "-dev", "-dev-no-store-token",
              f"-dev-listen-address=127.0.0.1:{port}"],
             env=_clean_env(root_token), cwd=Path(__file__).resolve().parent,
-            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            # The owned readiness marker is stdout; concurrent stderr logs must not join its line.
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         )
         started = threading.Event()
         stop = threading.Event()
+        diagnostics = _StartupDiagnostics()
         reader = threading.Thread(
-            target=_drain_server_output, args=(process.stdout, started, stop),
+            target=_drain_server_output, args=(process.stdout, started, stop, diagnostics),
             name="policy-delta-output-drain", daemon=True,
         )
         process._policy_delta_started = started
         process._policy_delta_output_stop = stop
+        process._policy_delta_startup_diagnostics = diagnostics
         reader.start()
         process._policy_delta_output_thread = reader
         return process
@@ -187,27 +242,34 @@ def _request(
 
 
 def _wait_ready(process: subprocess.Popen, port: int, root_token: str) -> None:
+    began = time.monotonic()
+    health_checks = 0
     started = getattr(process, "_policy_delta_started", None)
     if started is None:
-        raise RunError("startup_marker_unavailable")
-    deadline = time.monotonic() + _STARTUP_SECONDS
+        raise _startup_failure(process, "startup_marker_unavailable", began, health_checks)
+    deadline = began + _STARTUP_SECONDS
     while not started.is_set():
-        if process.poll() is not None:
-            raise RunError("server_exited_during_startup")
+        process_exit = process.poll()
+        if process_exit is not None:
+            raise _startup_failure(process, "server_exited_during_startup", began, health_checks,
+                                   process_exit)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            raise RunError("startup_marker_timeout")
+            raise _startup_failure(process, "startup_marker_timeout", began, health_checks)
         started.wait(timeout=min(0.1, remaining))
     while time.monotonic() < deadline:
-        if process.poll() is not None:
-            raise RunError("server_exited_during_startup")
+        process_exit = process.poll()
+        if process_exit is not None:
+            raise _startup_failure(process, "server_exited_during_startup", began, health_checks,
+                                   process_exit)
         try:
+            health_checks += 1
             if _request(port, "GET", "sys/health", "")[0] == 200 and process.poll() is None:
                 return
         except (OSError, http.client.HTTPException, TimeoutError):
             pass
         time.sleep(0.1)
-    raise RunError("startup_health_timeout")
+    raise _startup_failure(process, "startup_health_timeout", began, health_checks)
 
 
 def _admin(port: int, method: str, path: str, root_token: str, body: dict | None = None,

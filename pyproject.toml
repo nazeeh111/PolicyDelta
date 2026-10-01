@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "policydelta"
-version = "0.2.0"
+version = "0.2.1"
 description = "Request-level regression evidence for OpenBao policy changes"
 requires-python = ">=3.11"
 license = {text = "MIT"}

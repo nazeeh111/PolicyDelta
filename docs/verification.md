@@ -1,5 +1,13 @@
 # Verification scope
 
+## Startup diagnostics, October 1, 2026
+
+The [Linux Python 3.11 run](https://github.com/nazeeh111/PolicyDelta/actions/runs/36930725139) passed unit tests and CLI installation but timed out waiting for the owned server's startup marker during the approved example. Python 3.14 passed the same integration. The application source was unchanged by the workflow update. The failure's cause remains unknown.
+
+Startup failures now retain the original error code and add a separate diagnostic line with numeric output counts, reader state, process exit status, elapsed time and health-request count. Diagnostics contain no server output, tokens, fixture values, paths or environment data. The 15-second bound, complete owned marker requirement and cleanup are preserved; this is better failure evidence, not a claimed timeout fix.
+
+On macOS arm64/Python 3.14, all 56 unit tests passed, including eight diagnostic and privacy checks. The source integration passed expansion, unchanged, approved, missing, mixed and default-mount cases, report collision, invalid input and the occupied foreign-listener check. This local invocation used the current source via `PYTHONPATH`, not a newly installed wheel. Eight separate unchanged-source startup probes passed locally; they did not reproduce the Linux failure. Hosted installed-package checks on both declared Python versions are required before merge.
+
 ## Local v0.2.0 checks, September 29, 2026
 
 On macOS arm64 with Python 3.14 and the previously verified official OpenBao 2.7.0 executable:

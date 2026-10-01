@@ -1,5 +1,6 @@
 """Command-line entry point."""
 import argparse
+import json
 from pathlib import Path
 import sys
 
@@ -24,6 +25,9 @@ def main(argv=None):
         write_reports(report, args.output)
     except (SuiteError, RunError, ValueError, OSError) as error:
         print(f"PolicyDelta: {error}", file=sys.stderr)
+        if isinstance(error, RunError) and error.startup_diagnostics is not None:
+            print("PolicyDelta startup: " + json.dumps(error.startup_diagnostics, sort_keys=True),
+                  file=sys.stderr)
         return 2
     except KeyboardInterrupt:
         print("PolicyDelta: interrupted; owned server cleanup requested.", file=sys.stderr)

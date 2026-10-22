@@ -4,6 +4,14 @@ Test an OpenBao policy change by sending the same requests before and after it. 
 
 A capability list can say `update` while a parameter restriction still denies the request. The included example removes a required parameter and broadens a path. It detects four newly allowed requests, including two whose capability lists never change.
 
+| Synthetic request | Before | After | What the capability list misses |
+| --- | --- | --- | --- |
+| `forbidden-parameter` | Denied (403) | Allowed (204) | `create, update` on both sides |
+| `missing-parameter` | Denied (403) | Allowed (204) | `create, update` on both sides |
+| `write-remains-denied` | Denied (403) | Denied (403) | No access change |
+
+These rows come from the included [11-case OpenBao report](docs/example/report.json). Its four unapproved expansions make the example exit 1; the table highlights the two that a capability-only comparison would miss.
+
 ## Try the example
 
 Use Python 3.11 or newer on macOS arm64 or Linux amd64. From this checkout:

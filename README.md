@@ -12,6 +12,11 @@ A capability list can say `update` while a parameter restriction still denies th
 
 These rows come from the included [11-case OpenBao report](docs/example/report.json). Its four unapproved expansions make the example exit 1; the table highlights the two that a capability-only comparison would miss.
 
+To inspect the recorded comparison without installing Python or OpenBao, open
+`docs/example/index.html` from this checkout in your browser. Keep `report.json`
+and `junit.xml` beside it. These files are retained example evidence; rerun the
+suite below to test the current local runtime.
+
 ## Try the example
 
 Use Python 3.11 or newer on macOS arm64 or Linux amd64. From this checkout:

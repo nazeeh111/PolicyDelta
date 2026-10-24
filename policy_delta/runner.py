@@ -208,10 +208,14 @@ def _stop_server(process: subprocess.Popen) -> None:
 
 def _request(
     port: int, method: str, path: str, token: str, body: dict | None = None,
-    *, json_response: bool = False,
+    *, json_response: bool = False, mount_readiness: bool = False,
+    timeout: float | None = None,
 ) -> tuple[int, dict]:
     """One fixed-host HTTP request. No proxy, URL parser, or redirect handler."""
-    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=_HTTP_SECONDS)
+    connection = http.client.HTTPConnection(
+        "127.0.0.1", port,
+        timeout=_HTTP_SECONDS if timeout is None else min(_HTTP_SECONDS, timeout),
+    )
     try:
         encoded = None if body is None else json.dumps(body, separators=(",", ":"))
         headers = {"Content-Type": "application/json"}
@@ -223,6 +227,22 @@ def _request(
         )
         response = connection.getresponse()
         status = response.status
+        if mount_readiness and status == 400:
+            # The fixed KV-v2 upgrade response is transient initialization, not
+            # fixture acceptance. Never return or retain the engine's error text.
+            raw = response.read(_MAX_ADMIN_RESPONSE + 1)
+            initializing = False
+            if len(raw) <= _MAX_ADMIN_RESPONSE:
+                try:
+                    payload = json.loads(raw)
+                    errors = payload.get("errors") if isinstance(payload, dict) else None
+                    initializing = (isinstance(errors, list) and len(errors) == 1
+                                    and isinstance(errors[0], str)
+                                    and errors[0].startswith(
+                                        "Upgrading from non-versioned to versioned data."))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    pass
+            return status, {"initializing": initializing}
         if not json_response or not 200 <= status < 300:
             return status, {}
         raw = response.read(_MAX_ADMIN_RESPONSE + 1)
@@ -284,11 +304,36 @@ def _admin(port: int, method: str, path: str, root_token: str, body: dict | None
     return payload
 
 
+
+def _wait_mount_ready(port: int, mount: str, root_token: str) -> None:
+    """Poll this owned KV-v2 backend before writes under the existing HTTP budget."""
+    deadline = time.monotonic() + _HTTP_SECONDS
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RunError("admin_http_status")
+        try:
+            status, payload = _request(
+                port, "GET", f"{mount}/config", root_token, json_response=True,
+                mount_readiness=True, timeout=remaining,
+            )
+        except (OSError, http.client.HTTPException, TimeoutError):
+            raise RunError("admin_request_failed") from None
+        if time.monotonic() >= deadline:
+            raise RunError("admin_http_status")
+        if status == 200:
+            return
+        if status != 400 or payload != {"initializing": True}:
+            raise RunError("admin_http_status")
+        time.sleep(min(0.01, max(0, deadline - time.monotonic())))
+
 def _reset_fixtures(port: int, root_token: str, mounts: dict) -> None:
     for mount, fixture in mounts.items():
         _admin(port, "DELETE", f"sys/mounts/{mount}", root_token, accepted=(204, 404))
         _admin(port, "POST", f"sys/mounts/{mount}", root_token,
                {"type": "kv", "options": {"version": str(fixture["version"])}})
+        if fixture["version"] == 2:
+            _wait_mount_ready(port, mount, root_token)
         for key, value in fixture["secrets"].items():
             path = f"{mount}/data/{key}" if fixture["version"] == 2 else f"{mount}/{key}"
             body = {"data": value} if fixture["version"] == 2 else value

@@ -171,10 +171,12 @@ class RunnerTests(unittest.TestCase):
         calls = []
         variant = ["before"]
 
-        def fake_request(port, method, path, token, body=None, *, json_response=False):
+        def fake_request(port, method, path, token, body=None, *, json_response=False, mount_readiness=False, timeout=None):
             calls.append((variant[0], method, path, body))
             if path == "sys/policies/acl/reader":
                 variant[0] = "before" if body["policy"] == "before-marker" else "after"
+            if method == "GET" and path.endswith("/config"):
+                return 200, {"data": {}}
             if path == "auth/token/create":
                 return 200, {"auth": {"client_token": "token-marker"}}
             if path == "sys/capabilities":
@@ -208,8 +210,10 @@ class RunnerTests(unittest.TestCase):
         processes = [FakeProcess(), FakeProcess()]
         failures = 0
 
-        def fake_request(port, method, path, token, body=None, *, json_response=False):
+        def fake_request(port, method, path, token, body=None, *, json_response=False, mount_readiness=False, timeout=None):
             nonlocal failures
+            if method == "GET" and path.endswith("/config"):
+                return 200, {"data": {}}
             if path == "auth/token/create":
                 return 200, {"auth": {"client_token": "private-token"}}
             if path == "sys/capabilities":

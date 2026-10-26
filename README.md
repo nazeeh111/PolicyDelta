@@ -12,10 +12,11 @@ A capability list can say `update` while a parameter restriction still denies th
 
 These rows come from the included [11-case OpenBao report](docs/example/report.json). Its four unapproved expansions make the example exit 1; the table highlights the two that a capability-only comparison would miss.
 
-To inspect the recorded comparison without installing Python or OpenBao, open
-`docs/example/index.html` from this checkout in your browser. Keep `report.json`
-and `junit.xml` beside it. These files are retained example evidence; rerun the
-suite below to test the current local runtime.
+[View the recorded OpenBao 2.7.0 example](https://nazeeh111.github.io/PolicyDelta/)
+without installing anything. It shows retained synthetic results, with JSON and
+JUnit evidence; it does not evaluate policies in your browser. You can also open
+`docs/example/index.html` from this checkout with its evidence files beside it.
+Rerun the suite below to test the current local runtime.
 
 ## Try the example
 
@@ -106,6 +107,10 @@ Every case starts with freshly mounted, reseeded fixtures. The examples delete a
 This is a finite regression suite, not proof that a policy is universally safe. The first release covers single-node synthetic KV fixtures. Identity templates, external authentication, replication and production data are outside its scope. Dev mode is a disposable local execution environment, not a production hardening boundary.
 
 ## Development
+
+The Pages workflow packages the retained example with
+`python scripts/build_recorded_demo.py build/recorded-demo`. Choose a new output
+directory; the source report, JSON and JUnit files remain unchanged.
 
 ```sh
 python -m unittest discover -s tests -v

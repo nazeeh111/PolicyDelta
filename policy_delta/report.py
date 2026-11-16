@@ -63,14 +63,22 @@ def render_html(report: dict) -> str:
                 f'<div class="detail">Expected {e(case["expect"][variant])}<br>Capabilities: {e(capabilities)}{error}</div>')
 
     rows = []
-    for case in report["cases"]:
+    first_finding = ""
+    for number, case in enumerate(report["cases"], 1):
+        if case["findings"] and not first_finding:
+            first_finding = f'<a class="first-finding" href="#request-{number}">Review first finding</a>'
         findings = "<br>".join(e(item) for item in case["findings"]) or "Expectations met"
         rows.append(
-            f'<tr><th scope="row">{e(case["id"])}<span class="detail">{e(case["principal"])}</span></th>'
-            f'<td><b class="method">{e(case["method"])}</b><code>{e(case["path"])}</code></td>'
-            f'<td>{observation(case, "before")}</td><td>{observation(case, "after")}</td><td>{findings}</td></tr>'
+            f'<tr id="request-{number}" role="row"><th scope="row" role="rowheader">{e(case["id"])}<span class="detail">{e(case["principal"])}</span></th>'
+            f'<td role="cell" class="request"><b class="method">{e(case["method"])}</b><code>{e(case["path"])}</code></td>'
+            f'<td role="cell"><span class="mobile-label" aria-hidden="true">Before</span>{observation(case, "before")}</td>'
+            f'<td role="cell"><span class="mobile-label" aria-hidden="true">After</span>{observation(case, "after")}</td>'
+            f'<td role="cell" class="finding"><span class="mobile-label" aria-hidden="true">Finding</span>{findings}</td></tr>'
         )
     summary = report["summary"]
+    lifecycle_counts = ""
+    if "not_run" in summary and "run_errors" in summary:
+        lifecycle_counts = f' · {summary["not_run"]} cases not fully run · {summary["run_errors"]} lifecycle errors'
     verdict = VERDICTS[summary["exit_code"]]
     failures = report.get("execution", {}).get("failures", [])
     lifecycle = ""
@@ -101,14 +109,26 @@ main{{max-width:1500px;margin:auto;padding:38px 36px 64px}}header{{border-bottom
 .brand{{font-weight:800;font-size:21px;letter-spacing:-.6px}}a{{color:#174c67;text-underline-offset:4px}}a:focus-visible,summary:focus-visible{{outline:3px solid #174c67;outline-offset:5px}}
 .eyebrow{{text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:700;color:var(--muted)}}h1{{font-size:clamp(28px,4vw,48px);line-height:1.12;letter-spacing:-1.4px;margin:10px 0 15px;overflow-wrap:anywhere}}h2{{font-size:21px;font-weight:650;margin:0}}
 .intro{{padding:30px 0 25px}}.verdict{{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px 28px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;margin-bottom:25px}}.counts{{color:var(--muted);font-size:14px}}
-.scroll-hint{{display:none}}.table-wrap{{overflow-x:auto}}table{{width:100%;border-collapse:collapse;text-align:left;min-width:840px}}thead{{font-size:11px;letter-spacing:.06em;text-transform:uppercase}}th,td{{padding:17px 12px;vertical-align:top;border-bottom:1px solid var(--line)}}th:first-child,td:first-child{{padding-left:0}}tbody th{{font-weight:650;min-width:135px}}tbody tr:hover{{background:#eeeee5}}td{{font-size:13px}}code,.code{{font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}}td code{{display:block;margin-top:6px;max-width:250px}}.method{{font-size:11px}}.detail{{display:block;color:var(--muted);font-size:12px;font-weight:400;margin-top:8px}}.decision{{font-weight:750;text-transform:uppercase;font-size:11px;letter-spacing:.03em;margin-right:5px}}.allow{{color:#216846}}.deny{{color:#7c3f24}}.error{{color:#a52029}}
-.scope{{max-width:830px;font-size:13px;color:var(--muted);margin:28px 0}}details{{border-top:1px solid var(--line);padding-top:16px}}summary{{cursor:pointer;font-weight:650}}dl{{display:grid;grid-template-columns:minmax(120px,220px) 1fr;gap:8px 20px;font-size:12px}}dd{{margin:0;min-width:0}}footer{{font-size:12px;color:var(--muted);margin-top:30px}}@media(max-width:700px){{.scroll-hint{{display:block;font-size:12px;color:var(--muted)}}main{{padding:24px 18px}}header{{align-items:center;font-size:12px}}h1{{letter-spacing:-.6px}}dl{{display:block}}dd{{margin-bottom:12px}}}}
+.table-wrap{{overflow-x:auto}}table{{width:100%;border-collapse:collapse;text-align:left;min-width:840px}}thead{{font-size:11px;letter-spacing:.06em;text-transform:uppercase}}th,td{{padding:17px 12px;vertical-align:top;border-bottom:1px solid var(--line)}}th:first-child,td:first-child{{padding-left:0}}tbody th{{font-weight:650;min-width:135px}}tbody tr:hover{{background:#eeeee5}}td{{font-size:13px}}code,.code{{font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}}td code{{display:block;margin-top:6px;max-width:250px}}.method{{font-size:11px}}.detail{{display:block;color:var(--muted);font-size:12px;font-weight:400;margin-top:8px}}.decision{{font-weight:750;text-transform:uppercase;font-size:11px;letter-spacing:.03em;margin-right:5px}}.allow{{color:#216846}}.deny{{color:#7c3f24}}.error{{color:#a52029}}
+.scope{{max-width:830px;font-size:13px;color:var(--muted);margin:28px 0}}details{{border-top:1px solid var(--line);padding-top:16px}}summary{{cursor:pointer;font-weight:650}}dl{{display:grid;grid-template-columns:minmax(120px,220px) 1fr;gap:8px 20px;font-size:12px}}dd{{margin:0;min-width:0}}footer{{font-size:12px;color:var(--muted);margin-top:30px}}@media(max-width:700px){{main{{padding:24px 18px}}header{{align-items:center;font-size:12px}}h1{{letter-spacing:-.6px}}dl{{display:block}}dd{{margin-bottom:12px}}}}
+
+.mobile-label{{display:none}}.first-finding{{display:inline-block;margin:12px 0}}
+@media screen and (max-width:920px){{
+.table-wrap{{overflow:visible}}
+.table-wrap table,.table-wrap tbody{{display:block;min-width:0;width:100%}}
+.table-wrap thead{{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}}
+.table-wrap tbody tr{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:14px 0;border-bottom:1px solid var(--line);scroll-margin-top:12px}}
+.table-wrap tbody th,.table-wrap tbody td{{width:auto;min-width:0;padding:6px 8px;border:0;overflow-wrap:anywhere;vertical-align:top}}
+.table-wrap tbody th,.table-wrap .request,.table-wrap .finding{{grid-column:1/-1}}
+.mobile-label{{display:block;font-weight:650;color:var(--muted);font-size:12px;margin-bottom:4px}}
+.table-wrap .finding{{border-left:2px solid var(--line);margin:4px 8px;padding:4px 8px}}
+}}
 </style></head><body><main><header><span class="brand">PolicyDelta</span><a href="report.json">Read the JSON evidence</a></header>
 <section class="intro"><div class="eyebrow">Before / after policy review</div><h1>{e(report["suite_name"])}</h1><span class="detail">{e(report["engine_version"] or "Engine not verified")} · Disposable local servers · {len(report["cases"])} declared requests</span></section>
-<section class="verdict"><h2>{e(verdict)}</h2><span class="code">Exit {summary["exit_code"]}</span><span class="counts">{summary["expansions"]} newly allowed · {summary["unapproved_expansions"]} unapproved expansions · {summary["restrictions"]} newly denied · {summary["mismatches"]} expectation mismatches · {summary["errors"]} case execution errors · {summary.get("not_run", 0)} cases not fully run · {summary.get("run_errors", 0)} lifecycle errors</span></section>
+<section class="verdict"><h2>{e(verdict)}</h2><span class="code">Exit {summary["exit_code"]}</span><span class="counts">{summary["expansions"]} newly allowed · {summary["unapproved_expansions"]} unapproved expansions · {summary["restrictions"]} newly denied · {summary["mismatches"]} expectation mismatches · {summary["errors"]} case execution errors{lifecycle_counts}</span></section>
 {lifecycle}
-<p class="scroll-hint">Scroll horizontally to compare the two revisions.</p>
-<div class="table-wrap" tabindex="0" role="region" aria-label="Request comparison, scroll horizontally on narrow screens"><table><thead><tr><th scope="col">Case / principal</th><th scope="col">Request</th><th scope="col">Before</th><th scope="col">After</th><th scope="col">Finding</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>
+{first_finding}
+<div class="table-wrap" tabindex="0" role="region" aria-label="Request comparisons"><table role="table"><thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">Case / principal</th><th scope="col" role="columnheader">Request</th><th scope="col" role="columnheader">Before</th><th scope="col" role="columnheader">After</th><th scope="col" role="columnheader">Finding</th></tr></thead><tbody role="rowgroup">{''.join(rows)}</tbody></table></div>
 <p class="scope">Results cover these declared requests and fixtures. They do not establish all possible access, production behavior, or complete policy safety. A deny requires HTTP 403; missing data, setup failures, and other errors do not count as successful denial tests. Request bodies, returned secret values, and tokens are excluded from this report.</p>
 <details><summary>Input identities</summary><dl><dt>Suite SHA-256</dt><dd><code>{e(report["suite_sha256"])}</code></dd>{hashes}</dl></details>
 <footer>{summary["capability_invisible_expansions"]} newly allowed request(s) have unchanged capability lists.</footer></main></body></html>'''

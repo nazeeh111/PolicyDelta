@@ -1,5 +1,36 @@
 # Verification scope
 
+## Incomplete-run delivery candidate, November 15, 2026
+
+In an isolated current-source candidate on macOS arm64:
+
+- The original 64 tests passed before the change. The candidate's 73 tests pass
+  on Python 3.13 and 3.14, including nine new incomplete-run/CLI/escaping checks.
+- A wheel was built and installed into a disposable target, then imported away
+  from the checkout. Installed Python source bytes were compared with the
+  candidate.
+- The installed package passed the actual pinned OpenBao 2.7.0 integration:
+  expansion/unchanged/approved exits 1/0/0, missing and mixed request errors,
+  default-mount resets, output collision, input validation and rejection of an
+  occupied foreign listener without sending it HTTP requests.
+- Additional actual owned-server journeys injected a second-variant startup
+  failure, interruption during a later case, and a post-cleanup failure.
+  Completed observations survived, unstarted cases stayed `not_run`, and an
+  in-flight interrupted case remained an `observation_incomplete` error.
+  All three CLI results were exit 2 with JSON/HTML/JUnit evidence. All owned
+  children had stopped; generated synthetic root tokens and fixture values
+  were absent from artifacts and CLI output.
+- A genuinely missing executable, without mocking the CLI, produced the full
+  incomplete artifact set. A cleanup-only failure did not rewrite any successful
+  request; JUnit contained a separate lifecycle error.
+
+The injected failures are test controls, not naturally occurring OpenBao
+incidents. No personal credentials, existing secret server, production fixture,
+cloud service or deployment was used. Linux/Python 3.11 runtime CI and a live
+GitLab import were not run locally. Python 3.11 syntax was checked, not its full
+runtime behavior. The desktop browser was disconnected, so fresh visual report
+inspection remains unverified; structural escaping/XML checks passed.
+
 ## Startup diagnostics, October 1, 2026
 
 The [Linux Python 3.11 run](https://github.com/nazeeh111/PolicyDelta/actions/runs/36930725139) passed unit tests and CLI installation but timed out waiting for the owned server's startup marker during the approved example. Python 3.14 passed the same integration. The application source was unchanged by the workflow update. That run did not capture enough evidence to identify its exact cause.

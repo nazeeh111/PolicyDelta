@@ -18,19 +18,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path, help="New output directory")
     output = parser.parse_args().output
-    source = ROOT / "docs" / "example"
-    page = (source / "index.html").read_text(encoding="utf-8")
-    if page.count("</header>") != 1:
-        raise ValueError("Expected one report header; inspect the recorded template")
-    payloads = {
-        "index.html": page.replace("</header>", "</header>" + NOTICE).encode("utf-8"),
-        "report.json": (source / "report.json").read_bytes(),
-        "junit.xml": (source / "junit.xml").read_bytes(),
-        ".nojekyll": b"",
-    }
+    payloads = {".nojekyll": b""}
+    for directory, prefix in (("example", ""), ("current-example", "current/")):
+        source = ROOT / "docs" / directory
+        page = (source / "index.html").read_text(encoding="utf-8")
+        if page.count("</header>") != 1:
+            raise ValueError(f"Expected one report header in {directory}; inspect the recorded template")
+        payloads[prefix + "index.html"] = page.replace("</header>", "</header>" + NOTICE).encode("utf-8")
+        for name in ("report.json", "junit.xml"):
+            payloads[prefix + name] = (source / name).read_bytes()
     output.mkdir(parents=True)
     for name, content in payloads.items():
-        (output / name).write_bytes(content)
+        target = output / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
     print(f"Recorded example: {output / 'index.html'}")
 
 

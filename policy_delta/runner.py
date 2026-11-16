@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import http.client
 import json
 import os
@@ -14,14 +13,24 @@ import socket
 import subprocess
 import threading
 import time
+from .execution import RunState
 
 
 class RunError(RuntimeError):
-    """A sanitized runtime failure that invalidates the whole run."""
+    """A sanitized runtime failure that makes a run incomplete."""
 
     def __init__(self, code: str, *, startup_diagnostics: dict | None = None):
         super().__init__(code)
         self.startup_diagnostics = startup_diagnostics
+
+
+class _StartFailure(RunError):
+    """Carry controlled startup and cleanup facts to the lifecycle owner."""
+
+    def __init__(self, code, process, cleanup_error):
+        super().__init__(code)
+        self.process = process
+        self.cleanup_error = cleanup_error
 
 
 _VERSION = "OpenBao 2.7.0"
@@ -167,10 +176,15 @@ def _start_server(bao_path: Path, port: int, root_token: str) -> subprocess.Pope
         reader.start()
         process._policy_delta_output_thread = reader
         return process
-    except (OSError, RuntimeError):
+    except (OSError, RuntimeError, KeyboardInterrupt) as error:
+        cleanup_error = None
         if process is not None:
-            _stop_server(process)
-        raise RunError("server_start_failed") from None
+            try:
+                _stop_server(process)
+            except (RunError, OSError, KeyboardInterrupt) as failure:
+                cleanup_error = failure
+        code = "interrupted" if isinstance(error, KeyboardInterrupt) else "server_start_failed"
+        raise _StartFailure(code, process, cleanup_error) from None
     except BaseException:
         if process is not None:
             _stop_server(process)
@@ -178,32 +192,70 @@ def _start_server(bao_path: Path, port: int, root_token: str) -> subprocess.Pope
 
 
 def _stop_server(process: subprocess.Popen) -> None:
+    """Reap the owned child before propagating a bounded cleanup interruption."""
+    interrupted = False
     failed = False
+    permission_denied = False
+
+    def attempt(operation, *args, **kwargs):
+        nonlocal interrupted
+        for _ in range(3):
+            try:
+                return operation(*args, **kwargs)
+            except KeyboardInterrupt:
+                interrupted = True
+        raise _CleanupInterrupted()
+
     try:
-        if process.poll() is None:
-            process.terminate()
         try:
-            process.wait(timeout=_SHUTDOWN_SECONDS)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=_SHUTDOWN_SECONDS)
-    except (OSError, subprocess.TimeoutExpired):
+            if attempt(process.poll) is None:
+                attempt(process.terminate)
+            attempt(process.wait, timeout=_SHUTDOWN_SECONDS)
+        except (subprocess.TimeoutExpired, _CleanupInterrupted):
+            # A timeout or repeated interruption leaves ownership unresolved.
+            attempt(process.kill)
+            attempt(process.wait, timeout=_SHUTDOWN_SECONDS)
+    except PermissionError:
+        permission_denied = True
+        failed = True
+    except (OSError, subprocess.TimeoutExpired, _CleanupInterrupted):
         failed = True
     finally:
+        def finish(operation, *args, **kwargs):
+            nonlocal failed, permission_denied
+            try:
+                return attempt(operation, *args, **kwargs)
+            except PermissionError:
+                permission_denied = True
+                failed = True
+                return None
+            except (OSError, _CleanupInterrupted):
+                failed = True
+                return None
+
         stop = getattr(process, "_policy_delta_output_stop", None)
         if stop is not None:
-            stop.set()
+            finish(stop.set)
         reader = getattr(process, "_policy_delta_output_thread", None)
         if reader is not None:
-            reader.join(timeout=1)
+            finish(reader.join, timeout=1)
         output = getattr(process, "stdout", None)
         if output is not None:
-            output.close()
-        if reader is not None and reader.is_alive():
-            reader.join(timeout=1)
-            failed = failed or reader.is_alive()
+            finish(output.close)
+        if reader is not None and finish(reader.is_alive):
+            finish(reader.join, timeout=1)
+            failed = failed or bool(finish(reader.is_alive))
     if failed:
-        raise RunError("shutdown_failed") from None
+        error = RunError("shutdown_failed")
+        error.cleanup_interrupted = interrupted
+        error.cleanup_permission_denied = permission_denied
+        raise error from None
+    if interrupted:
+        raise KeyboardInterrupt
+
+
+class _CleanupInterrupted(Exception):
+    """A bounded series of interrupts prevented a cleanup operation."""
 
 
 def _request(
@@ -373,7 +425,7 @@ def _case_error(code: str, capabilities: list[str] | None = None) -> dict:
     return {"status": None, "decision": "error", "capabilities": capabilities or [], "error": code}
 
 
-def _run_case(port: int, root_token: str, data: dict, case: dict, variant: str) -> dict:
+def _run_case(port: int, root_token: str, data: dict, case: dict) -> dict:
     _reset_fixtures(port, root_token, data["mounts"])
     token = _create_token(port, root_token, data["principals"][case["principal"]])
     try:
@@ -387,39 +439,76 @@ def _run_case(port: int, root_token: str, data: dict, case: dict, variant: str) 
     return _observed(status, capabilities)
 
 
-def run_suite(suite: dict, bao_path: Path) -> dict:
-    """Run a prevalidated suite and return case evidence without body/token data."""
-    executable = Path(bao_path).resolve()
-    engine_version = _check_version(executable)
-    policy_hashes = {
-        variant: {name: hashlib.sha256(text.encode("utf-8")).hexdigest()
-                  for name, text in suite["_policy_texts"][variant].items()}
-        for variant in ("before", "after")
+def _record_failure(state: RunState, error: BaseException) -> None:
+    if isinstance(error, RunError):
+        if getattr(error, "cleanup_interrupted", False):
+            state.fail("interrupted")
+        state.fail(str(error), error.startup_diagnostics)
+    else:
+        state.fail("interrupted" if isinstance(error, KeyboardInterrupt) else "operation_failed")
+
+
+def _record_cleanup_failure(state: RunState, error: BaseException, process) -> None:
+    _record_failure(state, error)
+    try:
+        status = "running" if process.poll() is None else "exited"
+    except (OSError, KeyboardInterrupt):
+        status = "unknown"
+    pid = getattr(process, "pid", None)
+    if getattr(error, "cleanup_permission_denied", False):
+        state.report["execution"]["failures"][-1]["reason"] = "permission_denied"
+    state.report["execution"]["failures"][-1]["owned_process"] = {
+        "pid": pid if isinstance(pid, int) and not isinstance(pid, bool) and pid > 0 else None,
+        "status_at_cleanup": status,
     }
-    results = [
-        {"id": case["id"], "principal": case["principal"], "method": case["method"],
-         "path": case["path"], "allow_expansion": case.get("allow_expansion", False),
-         "expect": case["expect"]}
-        for case in suite["cases"]
-    ]
-    for variant in ("before", "after"):
-        root_token = secrets.token_hex(32)
+
+
+def _run_variant(state: RunState, suite: dict, executable: Path, variant: str) -> None:
+    process = None
+    try:
+        state.at("port", variant)
         port = _free_port()
+        root_token = secrets.token_hex(32)
+        state.at("server_start", variant)
         process = _start_server(executable, port, root_token)
-        try:
-            _wait_ready(process, port, root_token)
-            for name, policy_text in suite["_policy_texts"][variant].items():
-                _admin(port, "POST", f"sys/policies/acl/{name}", root_token,
-                       {"policy": policy_text})
-            for case, result in zip(suite["cases"], results):
-                result[variant] = _run_case(port, root_token, suite, case, variant)
-        finally:
-            _stop_server(process)
-    return {
-        "schema_version": 1,
-        "suite_name": suite["name"],
-        "engine_version": engine_version,
-        "suite_sha256": suite["_sha256"],
-        "policy_sha256": policy_hashes,
-        "cases": results,
-    }
+        state.at("startup", variant)
+        _wait_ready(process, port, root_token)
+        state.at("policy_setup", variant)
+        for name, policy_text in suite["_policy_texts"][variant].items():
+            _admin(port, "POST", f"sys/policies/acl/{name}", root_token,
+                   {"policy": policy_text})
+        for case, result in zip(suite["cases"], state.report["cases"]):
+            state.at("case", variant, case["id"])
+            # An interruption can happen after a request was sent but before its
+            # response arrives. Only cases not started at all remain not_run.
+            result[variant] = _case_error("observation_incomplete")
+            result[variant] = _run_case(port, root_token, suite, case)
+    except _StartFailure as error:
+        _record_failure(state, error)
+        if error.cleanup_error is not None:
+            state.at("shutdown", variant)
+            _record_cleanup_failure(state, error.cleanup_error, error.process)
+    except (RunError, OSError, http.client.HTTPException, KeyboardInterrupt) as error:
+        _record_failure(state, error)
+    finally:
+        if process is not None:
+            state.at("shutdown", variant)
+            try:
+                _stop_server(process)
+            except (RunError, OSError, KeyboardInterrupt) as error:
+                _record_cleanup_failure(state, error, process)
+
+
+def run_suite(suite: dict, bao_path: Path) -> dict:
+    """Return complete or incomplete evidence for a prevalidated synthetic suite."""
+    state = RunState(suite)
+    try:
+        executable = Path(bao_path).resolve()
+        state.report["engine_version"] = _check_version(executable)
+        for variant in ("before", "after"):
+            _run_variant(state, suite, executable, variant)
+            if state.failed:
+                break
+    except (RunError, OSError, KeyboardInterrupt) as error:
+        _record_failure(state, error)
+    return state.finish()

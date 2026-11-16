@@ -117,7 +117,7 @@ def main():
         assert not (root / "invalid").exists()
         print("Collision protection and validation-before-execution passed.")
 
-        from policy_delta.runner import run_suite, RunError
+        from policy_delta.runner import run_suite
         from policy_delta.suite import load_suite
         received = []
 
@@ -142,12 +142,11 @@ def main():
         listener.start()
         try:
             with patch("policy_delta.runner._free_port", return_value=foreign.server_port):
-                try:
-                    run_suite(load_suite(examples / "unchanged.json"), bao)
-                except RunError as error:
-                    assert str(error) == "server_exited_during_startup", str(error)
-                else:
-                    raise AssertionError("Occupied port was accepted")
+                report = run_suite(load_suite(examples / "unchanged.json"), bao)
+                assert report["execution"]["status"] == "incomplete", report["execution"]
+                assert report["execution"]["failures"][0]["code"] == "server_exited_during_startup"
+                assert all(c[v]["decision"] == "not_run"
+                           for c in report["cases"] for v in ("before", "after"))
             assert received == [], "Requests were sent to an unrelated listener"
             print("Startup collision rejected; unrelated listener received zero requests.")
         finally:

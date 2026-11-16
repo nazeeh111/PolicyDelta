@@ -4,7 +4,16 @@
 
 `run_suite` launches one OpenBao process per revision. Each case resets the declared mounts, seeds their data, creates a token for its principal, queries capabilities, and sends the declared HTTP request with that token. Capability metadata explains the result but never substitutes for it. The response status determines the outcome; secret bodies are discarded.
 
-`assess` compares observed decisions with expectations and marks permission expansions. A new allow needs a matching expectation and a case-specific approval. An execution failure outranks an otherwise passing comparison. The JUnit renderer maps each assessed case to one testcase while keeping the JSON finding counters intact. `write_reports` creates a fresh directory and replaces each completed temporary file atomically; if writing fails, it removes its own incomplete output. The three-file set is intended for inspection after the command exits, not concurrent streaming consumption.
+`RunState` owns the report's safe input metadata and pending observations before
+execution. The runner advances an explicit stage/variant/case location. Starting
+a case replaces `not_run` with `observation_incomplete`; a completed result then
+replaces that error placeholder. An interrupt may occur after sending a request,
+so an in-flight case is not mislabeled as unattempted. A controlled
+failure stops further work, retains that location and attempts owned cleanup.
+Cleanup failures append rather than overwrite the original failure. This is a
+single invocation record, not a durable journal or resumable server.
+
+`assess` compares observed allow/deny decisions with expectations and marks permission expansions. A new allow needs a matching expectation and a case-specific approval. An execution failure outranks an otherwise passing comparison. Neither `error` nor `not_run` fabricates an observed expectation mismatch. The JUnit renderer maps each assessed case to one testcase and each lifecycle failure to a separate `.execution` error testcase. Successful HTTP outcomes are not changed to accommodate cleanup failures. `write_reports` creates a fresh directory and replaces each completed temporary file atomically; if writing fails, it removes its own incomplete output. The three-file set is intended for inspection after the command exits, not concurrent streaming consumption.
 
 ## Why reset before every case?
 

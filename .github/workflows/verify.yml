@@ -30,3 +30,5 @@ jobs:
         run: python scripts/fetch_runtime.py
       - name: Real server integration
         run: python scripts/check_integration.py --bao .runtime/bao
+      - name: Incomplete reports with real owned servers
+        run: python scripts/check_incomplete.py --bao .runtime/bao --output "$RUNNER_TEMP/policydelta-incomplete"

@@ -20,11 +20,26 @@ Before every case, reset all fixture mounts and seed their original data. Cases 
 
 ## Results and delivery
 
-`run_suite(suite, bao_path) -> dict` returns `schema_version`, `suite_name`, `engine_version`, `suite_sha256`, policy hashes per variant, and `cases`. Each case result includes `id`, `principal`, `method`, `path`, `allow_expansion`, `expect`, and `before`/`after` objects with `status` (integer or null), `decision`, `capabilities` (list), and optional sanitized `error` code. No raw request/response body.
+`run_suite(suite, bao_path) -> dict` returns schema version 2, `suite_name`, `engine_version` (null until verified), `suite_sha256`, policy hashes per variant, `execution`, and `cases`. Each case result includes `id`, `principal`, `method`, `path`, `allow_expansion`, `expect`, and `before`/`after` objects with `status` (integer or null), `decision`, `capabilities` (list), and optional sanitized `error` code. Before execution, each side is `not_run` with null status and empty capabilities. Completed observations are retained after later failures. No raw request/response body.
+
+Cases not started remain `not_run`. A case that starts but does not return a
+completed observation has `decision: error`, null status and
+`error: observation_incomplete`. Its HTTP request may already have had an effect;
+the report makes no success, denial or nonexecution claim.
+
+`execution` contains `status` (`completed` or `incomplete`) and `failures`.
+Each failure has a fixed `stage` and sanitized `code`, optional `variant` and
+`case_id`, and optional fixed startup counters. Stages are `engine_version`,
+`port`, `server_start`, `startup`, `policy_setup`, `case`, and `shutdown`.
+Controlled runtime errors and execution interruption return this incomplete
+record after cleanup rather than discard prior results. Failure to validate
+the suite or publish reports remains a CLI error without a report guarantee.
+An unexpected programming exception is not silently converted to success.
+The retained version 1 reports, which have no `execution`, remain renderable.
 
 The CLI writes JSON, self-contained HTML, and JUnit XML reports into a fresh output directory whose parent already exists. Individual files are replaced atomically and an incomplete set is removed on write failure. Existing paths, including symlinks, are rejected. Escape every user-provided value in HTML and replace XML-invalid characters in JUnit text. Do not overwrite the suite or policy inputs. Tables show expected versus observed outcomes, newly allowed/denied cases, and capability lists. Mark expansions with unchanged capabilities. Include engine/policy identities and the explicit tested-case limit. No badge claiming universal security.
 
-JUnit has one testcase for each declared policy case. Execution error is an XML `<error>` even when that case also mismatches an expectation. An expectation mismatch or unapproved expansion is one `<failure>` per affected case. An approved expansion passes but retains before/after evidence in testcase output. JUnit tests/failures/errors count testcase outcomes; JSON finding counters keep their existing meaning. No synthetic duration, request body, returned value, or token enters XML.
+JUnit has one testcase for each declared policy case. Execution error or `not_run` is an XML `<error>` even when that case's other side also mismatches an observed expectation. Only observed allow/deny decisions count toward expectation mismatches; errors and missing observations do not invent policy decisions. An expectation mismatch or unapproved expansion is one `<failure>` per affected case. An approved expansion passes but retains before/after evidence in testcase output. Each lifecycle failure adds a `.execution` testcase with an `<error>`; this includes a shutdown failure after all requests completed. JUnit counts testcase outcomes. JSON `errors` counts incomplete/error cases, `not_run` counts cases with an unattempted side, and `run_errors` counts lifecycle failures. All contribute to exit 2 where applicable. No synthetic duration, request body, returned value, or token enters XML.
 
 Exit 0 when expectations match and no unapproved expansion occurs; exit 1 for expectation mismatch or an unapproved deny-to-allow change; exit 2 for invalid input or any runtime error. An explicit `allow_expansion: true` permits only that named case's expansion and remains visible. Errors take precedence over regressions. `python -m policy_delta SUITE --bao PATH --output DIR` is the entry point.
 

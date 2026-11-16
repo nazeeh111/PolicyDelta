@@ -125,8 +125,8 @@ class RunnerTests(unittest.TestCase):
         with patch.object(runner, "_check_version", return_value="OpenBao 2.7.0") as check, \
              patch.object(runner, "_free_port", return_value=12345), \
              patch.object(runner, "_start_server", side_effect=runner.RunError("server_start_failed")) as spawn:
-            with self.assertRaisesRegex(runner.RunError, "server_start_failed"):
-                runner.run_suite(suite(), relative)
+            report = runner.run_suite(suite(), relative)
+        self.assertEqual(report["execution"]["failures"][0]["code"], "server_start_failed")
         expected = relative.resolve()
         self.assertEqual(check.call_args.args[0], expected)
         self.assertEqual(spawn.call_args.args[0], expected)
@@ -135,8 +135,8 @@ class RunnerTests(unittest.TestCase):
         completed = subprocess.CompletedProcess(["bao", "version"], 0, b"OpenBao v2.8.0\n", b"")
         with patch.object(runner.subprocess, "run", return_value=completed), \
              patch.object(runner, "_start_server") as spawn:
-            with self.assertRaisesRegex(runner.RunError, "unsupported_engine_version"):
-                runner.run_suite(suite(), Path("/tmp/bao"))
+            report = runner.run_suite(suite(), Path("/tmp/bao"))
+        self.assertEqual(report["execution"]["failures"][0]["code"], "unsupported_engine_version")
         spawn.assert_not_called()
 
     def test_bind_failure_is_sanitized(self):
@@ -192,7 +192,8 @@ class RunnerTests(unittest.TestCase):
              patch.object(runner, "_free_port", return_value=12345):
             result = runner.run_suite(data, Path("/tmp/bao"))
 
-        self.assertEqual(result["schema_version"], 1)
+        self.assertEqual(result["schema_version"], 2)
+        self.assertEqual(result["execution"], {"status": "completed", "failures": []})
         self.assertEqual(result["suite_sha256"], "suite-hash")
         self.assertEqual(result["policy_sha256"]["before"]["reader"], hashlib.sha256(b"before-marker").hexdigest())
         self.assertEqual([case["before"]["decision"] for case in result["cases"]], ["allow", "allow"])
@@ -243,8 +244,8 @@ class RunnerTests(unittest.TestCase):
              patch.object(runner, "_start_server", return_value=process), \
              patch.object(runner, "_wait_ready", side_effect=runner.RunError("startup_timeout")), \
              patch.object(runner, "_free_port", return_value=12345):
-            with self.assertRaisesRegex(runner.RunError, "startup_timeout"):
-                runner.run_suite(suite(), Path("/tmp/bao"))
+            report = runner.run_suite(suite(), Path("/tmp/bao"))
+        self.assertEqual(report["execution"]["failures"][0]["code"], "startup_timeout")
         self.assertTrue(process.terminated)
         self.assertTrue(process.killed)
 
@@ -254,8 +255,8 @@ class RunnerTests(unittest.TestCase):
              patch.object(runner, "_start_server", return_value=process), \
              patch.object(runner, "_wait_ready", side_effect=KeyboardInterrupt), \
              patch.object(runner, "_free_port", return_value=12345):
-            with self.assertRaises(KeyboardInterrupt):
-                runner.run_suite(suite(), Path("/tmp/bao"))
+            report = runner.run_suite(suite(), Path("/tmp/bao"))
+        self.assertEqual(report["execution"]["failures"][0]["code"], "interrupted")
         self.assertTrue(process.terminated and process.waited)
 
     def test_unresponsive_child_is_killed_with_bounded_wait(self):
@@ -268,7 +269,7 @@ class RunnerTests(unittest.TestCase):
              patch.object(runner, "_create_token", return_value="private-token"), \
              patch.object(runner, "_capabilities", side_effect=runner.RunError("capabilities_failed")), \
              patch.object(runner, "_request") as request:
-            result = runner._run_case(12345, "root-token", suite(), suite()["cases"][0], "before")
+            result = runner._run_case(12345, "root-token", suite(), suite()["cases"][0])
         self.assertEqual(result, {"status": None, "decision": "error", "capabilities": [], "error": "capabilities_failed"})
         request.assert_not_called()
 

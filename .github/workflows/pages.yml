@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - docs/example/**
+      - docs/current-example/**
       - scripts/build_recorded_demo.py
       - .github/workflows/pages.yml
   workflow_dispatch:

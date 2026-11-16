@@ -8,15 +8,22 @@ from . import __version__
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Compare real OpenBao requests against two policy revisions in disposable local servers.")
-    parser.add_argument("suite", type=Path, help="JSON fixture suite")
-    parser.add_argument("--bao", required=True, type=Path, help="OpenBao 2.7.0 executable")
-    parser.add_argument("--output", required=True, type=Path, help="New report directory; existing paths are never overwritten")
+    parser = argparse.ArgumentParser(
+        description="Compare policy revisions by exercising synthetic requests in disposable local OpenBao servers.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=("Exit 0: expectations met; all access expansions explicitly approved.\n"
+                "Exit 1: expectation mismatch or unapproved deny-to-allow change.\n"
+                "Exit 2: input, execution or report publication could not complete.\n"
+                "Only an observed HTTP 403 is a denial. Use synthetic fixtures; case names and paths remain visible.")
+    )
+    parser.add_argument("suite", type=Path, help="Synthetic JSON suite; policy paths are relative to this file")
+    parser.add_argument("--bao", required=True, type=Path, help="Existing OpenBao 2.7.0 executable for owned loopback dev servers")
+    parser.add_argument("--output", required=True, type=Path, help="New directory in an existing parent; writes HTML, JSON and JUnit XML")
     parser.add_argument("--version", action="version", version=f"PolicyDelta {__version__}")
     args = parser.parse_args(argv)
     from .suite import load_suite, SuiteError
     from .runner import run_suite, RunError
-    from .report import assess, write_reports
+    from .report import assess, write_reports, VERDICTS
     try:
         if args.output.exists() or args.output.is_symlink():
             raise ValueError("Output path already exists; choose a new report directory.")
@@ -33,9 +40,15 @@ def main(argv=None):
         print("PolicyDelta: interrupted; owned server cleanup requested.", file=sys.stderr)
         return 2
     summary = report["summary"]
-    print(f'{len(report["cases"])} cases; {summary["expansions"]} newly allowed; '
-          f'{summary["mismatches"]} expectation mismatches; {summary["errors"]} errors.')
+    print(f'{VERDICTS[summary["exit_code"]]} (exit {summary["exit_code"]}).')
+    print(f'{len(report["cases"])} cases; {summary["expansions"]} newly allowed '
+          f'({summary["unapproved_expansions"]} unapproved); '
+          f'{summary["mismatches"]} expectation mismatches.')
+    print(f'Execution: {report["execution"]["status"]}; {summary["errors"]} case errors; '
+          f'{summary["not_run"]} cases not fully run; {summary["run_errors"]} lifecycle errors.')
     print(f'Report: {(args.output / "index.html").resolve()}')
+    print(f'Evidence: {(args.output / "report.json").resolve()}')
+    print(f'JUnit: {(args.output / "junit.xml").resolve()}')
     return summary["exit_code"]
 
 

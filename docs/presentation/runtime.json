@@ -1,0 +1,10 @@
+{
+  "source_main": "dc1ea52c8268a9e26f949ecd9b538f427bdf1c0a",
+  "source_tree": "4c5433b0ab0749fb14955cc0e85c9784e2e61d43",
+  "engine_version": "OpenBao v2.7.0 (ca305a02daa68b203325daa1b25c18d7a252d4b3), committed 2026-09-23T19:00:07Z",
+  "engine_binary_sha256": "c242fa4296f642e0e272994b0d7a6c23a4bfebbc36b5accbae554d0a804d60f2",
+  "engine_archive_sha256": "cc9f9d4d969bbdeba7ffc8f3f3649d9372446847ffe2e1e618520c038c999641",
+  "runtime_route": "Original unchanged fetch_runtime.py, exact official release archive and hash; external engine not bundled",
+  "python": "3.14.7 (v3.14.7:823f0323ee6, Aug  5 2026, 07:07:01) [Clang 21.0.0 (clang-2100.1.1.101)]",
+  "scope": "Synthetic owned loopback servers only; no existing service, private policies or cloud access"
+}

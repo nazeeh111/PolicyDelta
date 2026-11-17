@@ -1,0 +1,327 @@
+{
+  "schema_version": 2,
+  "suite_name": "Unchanged build policy",
+  "engine_version": "OpenBao 2.7.0",
+  "suite_sha256": "fca026539d1d6a62c7caec37f3b044cc24480b8b432bae9054f41edd4258e5d2",
+  "policy_sha256": {
+    "before": {
+      "build": "cf5aa84764a483896cd8c5cf2a7f55c6938f4f5e03dc07a91c9e02657bb55eec"
+    },
+    "after": {
+      "build": "cf5aa84764a483896cd8c5cf2a7f55c6938f4f5e03dc07a91c9e02657bb55eec"
+    }
+  },
+  "execution": {
+    "status": "completed",
+    "failures": []
+  },
+  "cases": [
+    {
+      "id": "build-read",
+      "principal": "builder",
+      "method": "GET",
+      "path": "ci/data/build/job",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": 200,
+        "decision": "allow",
+        "capabilities": [
+          "read"
+        ]
+      },
+      "after": {
+        "status": 200,
+        "decision": "allow",
+        "capabilities": [
+          "read"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "id": "explicit-deny",
+      "principal": "builder",
+      "method": "GET",
+      "path": "ci/data/build/private/key",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": 403,
+        "decision": "deny",
+        "capabilities": [
+          "deny"
+        ]
+      },
+      "after": {
+        "status": 403,
+        "decision": "deny",
+        "capabilities": [
+          "deny"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "id": "sibling-prefix",
+      "principal": "builder",
+      "method": "GET",
+      "path": "ci/data/build2/job",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": 403,
+        "decision": "deny",
+        "capabilities": [
+          "deny"
+        ]
+      },
+      "after": {
+        "status": 403,
+        "decision": "deny",
+        "capabilities": [
+          "deny"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "id": "other-team",
+      "principal": "builder",
+      "method": "GET",
+      "path": "ci/data/team/prod",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": 403,
+        "decision": "deny",
+        "capabilities": [
+          "deny"
+        ]
+      },
+      "after": {
+        "status": 403,
+        "decision": "deny",
+        "capabilities": [
+          "deny"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "id": "metadata-list",
+      "principal": "builder",
+      "method": "LIST",
+      "path": "ci/metadata/build",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": 200,
+        "decision": "allow",
+        "capabilities": [
+          "list"
+        ]
+      },
+      "after": {
+        "status": 200,
+        "decision": "allow",
+        "capabilities": [
+          "list"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "id": "write-remains-denied",
+      "principal": "builder",
+      "method": "POST",
+      "path": "ci/data/build/job",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": 403,
+        "decision": "deny",
+        "capabilities": [
+          "read"
+        ]
+      },
+      "after": {
+        "status": 403,
+        "decision": "deny",
+        "capabilities": [
+          "read"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "id": "permitted-parameter",
+      "principal": "builder",
+      "method": "POST",
+      "path": "legacy/release",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": 204,
+        "decision": "allow",
+        "capabilities": [
+          "create",
+          "update"
+        ]
+      },
+      "after": {
+        "status": 204,
+        "decision": "allow",
+        "capabilities": [
+          "create",
+          "update"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "id": "forbidden-parameter",
+      "principal": "builder",
+      "method": "POST",
+      "path": "legacy/release",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": 403,
+        "decision": "deny",
+        "capabilities": [
+          "create",
+          "update"
+        ]
+      },
+      "after": {
+        "status": 403,
+        "decision": "deny",
+        "capabilities": [
+          "create",
+          "update"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "id": "missing-parameter",
+      "principal": "builder",
+      "method": "POST",
+      "path": "legacy/release",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": 403,
+        "decision": "deny",
+        "capabilities": [
+          "create",
+          "update"
+        ]
+      },
+      "after": {
+        "status": 403,
+        "decision": "deny",
+        "capabilities": [
+          "create",
+          "update"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "id": "delete-fixture",
+      "principal": "builder",
+      "method": "DELETE",
+      "path": "legacy/ephemeral",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": 204,
+        "decision": "allow",
+        "capabilities": [
+          "delete",
+          "read"
+        ]
+      },
+      "after": {
+        "status": 204,
+        "decision": "allow",
+        "capabilities": [
+          "delete",
+          "read"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "id": "read-after-delete",
+      "principal": "builder",
+      "method": "GET",
+      "path": "legacy/ephemeral",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": 200,
+        "decision": "allow",
+        "capabilities": [
+          "delete",
+          "read"
+        ]
+      },
+      "after": {
+        "status": 200,
+        "decision": "allow",
+        "capabilities": [
+          "delete",
+          "read"
+        ]
+      },
+      "findings": []
+    }
+  ],
+  "summary": {
+    "errors": 0,
+    "mismatches": 0,
+    "expansions": 0,
+    "unapproved_expansions": 0,
+    "restrictions": 0,
+    "capability_invisible_expansions": 0,
+    "not_run": 0,
+    "run_errors": 0,
+    "exit_code": 0
+  }
+}

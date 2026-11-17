@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites tests="11" failures="0" errors="0">
+  <testsuite name="Explicitly approved build policy expansion" tests="11" failures="0" errors="0">
+    <testcase classname="PolicyDelta.Explicitly approved build policy expansion" name="build-read">
+      <system-out>GET ci/data/build/job · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed allow (HTTP 200)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Explicitly approved build policy expansion" name="explicit-deny">
+      <system-out>GET ci/data/build/private/key · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed deny (HTTP 403)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Explicitly approved build policy expansion" name="sibling-prefix">
+      <system-out>GET ci/data/build2/job · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected allow, observed allow (HTTP 200)
+Findings: approved expansion</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Explicitly approved build policy expansion" name="other-team">
+      <system-out>GET ci/data/team/prod · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected allow, observed allow (HTTP 200)
+Findings: approved expansion</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Explicitly approved build policy expansion" name="metadata-list">
+      <system-out>LIST ci/metadata/build · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed allow (HTTP 200)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Explicitly approved build policy expansion" name="write-remains-denied">
+      <system-out>POST ci/data/build/job · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed deny (HTTP 403)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Explicitly approved build policy expansion" name="permitted-parameter">
+      <system-out>POST legacy/release · principal builder
+before: expected allow, observed allow (HTTP 204)
+after: expected allow, observed allow (HTTP 204)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Explicitly approved build policy expansion" name="forbidden-parameter">
+      <system-out>POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected allow, observed allow (HTTP 204)
+Findings: approved expansion, capabilities unchanged</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Explicitly approved build policy expansion" name="missing-parameter">
+      <system-out>POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected allow, observed allow (HTTP 204)
+Findings: approved expansion, capabilities unchanged</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Explicitly approved build policy expansion" name="delete-fixture">
+      <system-out>DELETE legacy/ephemeral · principal builder
+before: expected allow, observed allow (HTTP 204)
+after: expected allow, observed allow (HTTP 204)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Explicitly approved build policy expansion" name="read-after-delete">
+      <system-out>GET legacy/ephemeral · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed allow (HTTP 200)</system-out>
+    </testcase>
+  </testsuite>
+</testsuites>

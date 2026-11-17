@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites tests="11" failures="4" errors="0">
+  <testsuite name="Build service policy expansion" tests="11" failures="4" errors="0">
+    <testcase classname="PolicyDelta.Build service policy expansion" name="build-read">
+      <system-out>GET ci/data/build/job · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed allow (HTTP 200)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Build service policy expansion" name="explicit-deny">
+      <system-out>GET ci/data/build/private/key · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed deny (HTTP 403)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Build service policy expansion" name="sibling-prefix">
+      <failure message="expectation mismatch, unapproved expansion">GET ci/data/build2/job · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed allow (HTTP 200)
+Findings: expectation mismatch, unapproved expansion</failure>
+      <system-out>GET ci/data/build2/job · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed allow (HTTP 200)
+Findings: expectation mismatch, unapproved expansion</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Build service policy expansion" name="other-team">
+      <failure message="expectation mismatch, unapproved expansion">GET ci/data/team/prod · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed allow (HTTP 200)
+Findings: expectation mismatch, unapproved expansion</failure>
+      <system-out>GET ci/data/team/prod · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed allow (HTTP 200)
+Findings: expectation mismatch, unapproved expansion</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Build service policy expansion" name="metadata-list">
+      <system-out>LIST ci/metadata/build · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed allow (HTTP 200)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Build service policy expansion" name="write-remains-denied">
+      <system-out>POST ci/data/build/job · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed deny (HTTP 403)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Build service policy expansion" name="permitted-parameter">
+      <system-out>POST legacy/release · principal builder
+before: expected allow, observed allow (HTTP 204)
+after: expected allow, observed allow (HTTP 204)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Build service policy expansion" name="forbidden-parameter">
+      <failure message="expectation mismatch, unapproved expansion">POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed allow (HTTP 204)
+Findings: expectation mismatch, unapproved expansion, capabilities unchanged</failure>
+      <system-out>POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed allow (HTTP 204)
+Findings: expectation mismatch, unapproved expansion, capabilities unchanged</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Build service policy expansion" name="missing-parameter">
+      <failure message="expectation mismatch, unapproved expansion">POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed allow (HTTP 204)
+Findings: expectation mismatch, unapproved expansion, capabilities unchanged</failure>
+      <system-out>POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed allow (HTTP 204)
+Findings: expectation mismatch, unapproved expansion, capabilities unchanged</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Build service policy expansion" name="delete-fixture">
+      <system-out>DELETE legacy/ephemeral · principal builder
+before: expected allow, observed allow (HTTP 204)
+after: expected allow, observed allow (HTTP 204)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Build service policy expansion" name="read-after-delete">
+      <system-out>GET legacy/ephemeral · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed allow (HTTP 200)</system-out>
+    </testcase>
+  </testsuite>
+</testsuites>

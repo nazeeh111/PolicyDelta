@@ -1,0 +1,316 @@
+{
+  "schema_version": 2,
+  "suite_name": "Unchanged build policy",
+  "engine_version": "OpenBao 2.7.0",
+  "suite_sha256": "fca026539d1d6a62c7caec37f3b044cc24480b8b432bae9054f41edd4258e5d2",
+  "policy_sha256": {
+    "before": {
+      "build": "cf5aa84764a483896cd8c5cf2a7f55c6938f4f5e03dc07a91c9e02657bb55eec"
+    },
+    "after": {
+      "build": "cf5aa84764a483896cd8c5cf2a7f55c6938f4f5e03dc07a91c9e02657bb55eec"
+    }
+  },
+  "execution": {
+    "status": "incomplete",
+    "failures": [
+      {
+        "stage": "case",
+        "variant": "before",
+        "case_id": "explicit-deny",
+        "code": "interrupted"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "build-read",
+      "principal": "builder",
+      "method": "GET",
+      "path": "ci/data/build/job",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": 200,
+        "decision": "allow",
+        "capabilities": [
+          "read"
+        ]
+      },
+      "after": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "findings": [
+        "not run",
+        "execution error"
+      ]
+    },
+    {
+      "id": "explicit-deny",
+      "principal": "builder",
+      "method": "GET",
+      "path": "ci/data/build/private/key",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": null,
+        "decision": "error",
+        "capabilities": [],
+        "error": "observation_incomplete"
+      },
+      "after": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "findings": [
+        "not run",
+        "execution error"
+      ]
+    },
+    {
+      "id": "sibling-prefix",
+      "principal": "builder",
+      "method": "GET",
+      "path": "ci/data/build2/job",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "after": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "findings": [
+        "not run",
+        "execution error"
+      ]
+    },
+    {
+      "id": "other-team",
+      "principal": "builder",
+      "method": "GET",
+      "path": "ci/data/team/prod",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "after": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "findings": [
+        "not run",
+        "execution error"
+      ]
+    },
+    {
+      "id": "metadata-list",
+      "principal": "builder",
+      "method": "LIST",
+      "path": "ci/metadata/build",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "after": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "findings": [
+        "not run",
+        "execution error"
+      ]
+    },
+    {
+      "id": "write-remains-denied",
+      "principal": "builder",
+      "method": "POST",
+      "path": "ci/data/build/job",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "after": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "findings": [
+        "not run",
+        "execution error"
+      ]
+    },
+    {
+      "id": "permitted-parameter",
+      "principal": "builder",
+      "method": "POST",
+      "path": "legacy/release",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "after": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "findings": [
+        "not run",
+        "execution error"
+      ]
+    },
+    {
+      "id": "forbidden-parameter",
+      "principal": "builder",
+      "method": "POST",
+      "path": "legacy/release",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "after": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "findings": [
+        "not run",
+        "execution error"
+      ]
+    },
+    {
+      "id": "missing-parameter",
+      "principal": "builder",
+      "method": "POST",
+      "path": "legacy/release",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "after": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "findings": [
+        "not run",
+        "execution error"
+      ]
+    },
+    {
+      "id": "delete-fixture",
+      "principal": "builder",
+      "method": "DELETE",
+      "path": "legacy/ephemeral",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "after": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "findings": [
+        "not run",
+        "execution error"
+      ]
+    },
+    {
+      "id": "read-after-delete",
+      "principal": "builder",
+      "method": "GET",
+      "path": "legacy/ephemeral",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      },
+      "allow_expansion": false,
+      "before": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "after": {
+        "status": null,
+        "decision": "not_run",
+        "capabilities": []
+      },
+      "findings": [
+        "not run",
+        "execution error"
+      ]
+    }
+  ],
+  "summary": {
+    "errors": 11,
+    "mismatches": 0,
+    "expansions": 0,
+    "unapproved_expansions": 0,
+    "restrictions": 0,
+    "capability_invisible_expansions": 0,
+    "not_run": 11,
+    "run_errors": 1,
+    "exit_code": 2
+  }
+}

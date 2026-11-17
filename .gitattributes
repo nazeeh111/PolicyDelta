@@ -1,0 +1,4 @@
+# Exact synthetic reports and source-derived vectors.
+docs/presentation/**/*.json -text
+docs/presentation/*.json -text
+docs/presentation/*.svg -text

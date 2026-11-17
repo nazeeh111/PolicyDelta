@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "name": "Unchanged build policy",
+  "mounts": {
+    "ci": {
+      "version": 2,
+      "secrets": {
+        "build/job": {
+          "value": "synthetic-fixture-only"
+        },
+        "build/private/key": {
+          "value": "synthetic-fixture-only"
+        },
+        "build2/job": {
+          "value": "synthetic-fixture-only"
+        },
+        "team/prod": {
+          "value": "synthetic-fixture-only"
+        }
+      }
+    },
+    "legacy": {
+      "version": 1,
+      "secrets": {
+        "release": {
+          "stage": "test",
+          "value": "synthetic"
+        },
+        "ephemeral": {
+          "value": "reset-me"
+        }
+      }
+    }
+  },
+  "policies": {
+    "before": {
+      "build": "policies/before.hcl"
+    },
+    "after": {
+      "build": "policies/before.hcl"
+    }
+  },
+  "principals": {
+    "builder": [
+      "build"
+    ]
+  },
+  "cases": [
+    {
+      "id": "build-read",
+      "principal": "builder",
+      "method": "GET",
+      "path": "ci/data/build/job",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      }
+    },
+    {
+      "id": "explicit-deny",
+      "principal": "builder",
+      "method": "GET",
+      "path": "ci/data/build/private/key",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      }
+    },
+    {
+      "id": "sibling-prefix",
+      "principal": "builder",
+      "method": "GET",
+      "path": "ci/data/build2/job",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      }
+    },
+    {
+      "id": "other-team",
+      "principal": "builder",
+      "method": "GET",
+      "path": "ci/data/team/prod",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      }
+    },
+    {
+      "id": "metadata-list",
+      "principal": "builder",
+      "method": "LIST",
+      "path": "ci/metadata/build",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      }
+    },
+    {
+      "id": "write-remains-denied",
+      "principal": "builder",
+      "method": "POST",
+      "path": "ci/data/build/job",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "body": {
+        "data": {
+          "value": "replacement-fixture"
+        }
+      }
+    },
+    {
+      "id": "permitted-parameter",
+      "principal": "builder",
+      "method": "POST",
+      "path": "legacy/release",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      },
+      "body": {
+        "stage": "test",
+        "value": "synthetic"
+      }
+    },
+    {
+      "id": "forbidden-parameter",
+      "principal": "builder",
+      "method": "POST",
+      "path": "legacy/release",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "body": {
+        "stage": "prod",
+        "value": "synthetic"
+      }
+    },
+    {
+      "id": "missing-parameter",
+      "principal": "builder",
+      "method": "POST",
+      "path": "legacy/release",
+      "expect": {
+        "before": "deny",
+        "after": "deny"
+      },
+      "body": {
+        "value": "synthetic"
+      }
+    },
+    {
+      "id": "delete-fixture",
+      "principal": "builder",
+      "method": "DELETE",
+      "path": "legacy/ephemeral",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      }
+    },
+    {
+      "id": "read-after-delete",
+      "principal": "builder",
+      "method": "GET",
+      "path": "legacy/ephemeral",
+      "expect": {
+        "before": "allow",
+        "after": "allow"
+      }
+    }
+  ]
+}

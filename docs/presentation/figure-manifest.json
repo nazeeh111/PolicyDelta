@@ -1,0 +1,19 @@
+{
+  "source_main": "dc1ea52c8268a9e26f949ecd9b538f427bdf1c0a",
+  "meaning": "Observed before/after request status, capability probes, source parameter restrictions and explicit approval controls. No internal rule trace, universal-safety claim or quantitative normalization.",
+  "files": {
+    "figure.py": "70380606223a47e1d2c7f01dc1d8259309cf4cae2ba7175da793580766187716",
+    "request.html": "8cf0d0c96d86bce3ba895e9fd6ef294f8b0340e149b349e7c49726cd70a72a9f",
+    "request-mobile.html": "69af0b8d357530a008e5f2c9dd1236c8455ce7de2d3a40542b924198993b54c5",
+    "request.svg": "f92adf8496fbe37d6ae2ad942cebb18539952d4bbc0c61693a5613103a20e010",
+    "request-mobile.svg": "35e5af174201c701dd19157cb2430117e832bff2f6293c8ef9c6d3d110367192",
+    "request.png": "3d83201dd7b0bb4d41be650b3e6ce9c5d46257f708ba82d51301a40194b13d31",
+    "request-mobile.png": "f56617906718d11fc42f2fc4e9b6afd8b0a15943da9ae49b00a83a6b11a86487",
+    "expansion/report.json": "38e671a6ff1bd612e81c3da6a713de43e4856aecc1e05e2491b2981227ab3b92",
+    "approved/report.json": "c9e256755a9c2dec45f3c1384f362aca1d55b4c80dbdd3ba04bbef968b37b785",
+    "expectations-only/report.json": "bc6e72074d0676a19733be515b1d7d63e4a72236644251d465d89f008d8ace64",
+    "inputs/expansion.json": "d52d390f4c5f0f2e45e403342d527d7b6717f23d452737cfc3bd1040a3d7fc44",
+    "inputs/policies/before.hcl": "cf5aa84764a483896cd8c5cf2a7f55c6938f4f5e03dc07a91c9e02657bb55eec",
+    "inputs/policies/after.hcl": "fecd18a169c781fe68fae014ed76e126a2bb52ba13b52a1eb8a6b2024773b3f8"
+  }
+}

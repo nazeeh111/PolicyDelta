@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites tests="12" failures="0" errors="12">
+  <testsuite name="Unchanged build policy" tests="12" failures="0" errors="12">
+    <testcase classname="PolicyDelta.Unchanged build policy" name="build-read">
+      <error message="execution error">GET ci/data/build/job · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed not_run (HTTP unavailable)
+Findings: not run, execution error</error>
+      <system-out>GET ci/data/build/job · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed not_run (HTTP unavailable)
+Findings: not run, execution error</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Unchanged build policy" name="explicit-deny">
+      <error message="execution error">GET ci/data/build/private/key · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed not_run (HTTP unavailable)
+Findings: not run, execution error</error>
+      <system-out>GET ci/data/build/private/key · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed not_run (HTTP unavailable)
+Findings: not run, execution error</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Unchanged build policy" name="sibling-prefix">
+      <error message="execution error">GET ci/data/build2/job · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed not_run (HTTP unavailable)
+Findings: not run, execution error</error>
+      <system-out>GET ci/data/build2/job · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed not_run (HTTP unavailable)
+Findings: not run, execution error</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Unchanged build policy" name="other-team">
+      <error message="execution error">GET ci/data/team/prod · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed not_run (HTTP unavailable)
+Findings: not run, execution error</error>
+      <system-out>GET ci/data/team/prod · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed not_run (HTTP unavailable)
+Findings: not run, execution error</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Unchanged build policy" name="metadata-list">
+      <error message="execution error">LIST ci/metadata/build · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed not_run (HTTP unavailable)
+Findings: not run, execution error</error>
+      <system-out>LIST ci/metadata/build · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed not_run (HTTP unavailable)
+Findings: not run, execution error</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Unchanged build policy" name="write-remains-denied">
+      <error message="execution error">POST ci/data/build/job · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed not_run (HTTP unavailable)
+Findings: not run, execution error</error>
+      <system-out>POST ci/data/build/job · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed not_run (HTTP unavailable)
+Findings: not run, execution error</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Unchanged build policy" name="permitted-parameter">
+      <error message="execution error">POST legacy/release · principal builder
+before: expected allow, observed allow (HTTP 204)
+after: expected allow, observed not_run (HTTP unavailable)
+Findings: not run, execution error</error>
+      <system-out>POST legacy/release · principal builder
+before: expected allow, observed allow (HTTP 204)
+after: expected allow, observed not_run (HTTP unavailable)
+Findings: not run, execution error</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Unchanged build policy" name="forbidden-parameter">
+      <error message="execution error">POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed not_run (HTTP unavailable)
+Findings: not run, execution error</error>
+      <system-out>POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed not_run (HTTP unavailable)
+Findings: not run, execution error</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Unchanged build policy" name="missing-parameter">
+      <error message="execution error">POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed not_run (HTTP unavailable)
+Findings: not run, execution error</error>
+      <system-out>POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed not_run (HTTP unavailable)
+Findings: not run, execution error</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Unchanged build policy" name="delete-fixture">
+      <error message="execution error">DELETE legacy/ephemeral · principal builder
+before: expected allow, observed allow (HTTP 204)
+after: expected allow, observed not_run (HTTP unavailable)
+Findings: not run, execution error</error>
+      <system-out>DELETE legacy/ephemeral · principal builder
+before: expected allow, observed allow (HTTP 204)
+after: expected allow, observed not_run (HTTP unavailable)
+Findings: not run, execution error</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Unchanged build policy" name="read-after-delete">
+      <error message="execution error">GET legacy/ephemeral · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed not_run (HTTP unavailable)
+Findings: not run, execution error</error>
+      <system-out>GET legacy/ephemeral · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed not_run (HTTP unavailable)
+Findings: not run, execution error</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Unchanged build policy.execution" name="run 1: startup">
+      <error message="injected_startup_failure">{"code": "injected_startup_failure", "stage": "startup", "variant": "after"}</error>
+    </testcase>
+  </testsuite>
+</testsuites>

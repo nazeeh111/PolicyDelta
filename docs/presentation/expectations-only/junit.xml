@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites tests="11" failures="4" errors="0">
+  <testsuite name="Matching expectations without expansion approval" tests="11" failures="4" errors="0">
+    <testcase classname="PolicyDelta.Matching expectations without expansion approval" name="build-read">
+      <system-out>GET ci/data/build/job · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed allow (HTTP 200)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Matching expectations without expansion approval" name="explicit-deny">
+      <system-out>GET ci/data/build/private/key · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed deny (HTTP 403)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Matching expectations without expansion approval" name="sibling-prefix">
+      <failure message="unapproved expansion">GET ci/data/build2/job · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected allow, observed allow (HTTP 200)
+Findings: unapproved expansion</failure>
+      <system-out>GET ci/data/build2/job · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected allow, observed allow (HTTP 200)
+Findings: unapproved expansion</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Matching expectations without expansion approval" name="other-team">
+      <failure message="unapproved expansion">GET ci/data/team/prod · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected allow, observed allow (HTTP 200)
+Findings: unapproved expansion</failure>
+      <system-out>GET ci/data/team/prod · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected allow, observed allow (HTTP 200)
+Findings: unapproved expansion</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Matching expectations without expansion approval" name="metadata-list">
+      <system-out>LIST ci/metadata/build · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed allow (HTTP 200)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Matching expectations without expansion approval" name="write-remains-denied">
+      <system-out>POST ci/data/build/job · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected deny, observed deny (HTTP 403)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Matching expectations without expansion approval" name="permitted-parameter">
+      <system-out>POST legacy/release · principal builder
+before: expected allow, observed allow (HTTP 204)
+after: expected allow, observed allow (HTTP 204)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Matching expectations without expansion approval" name="forbidden-parameter">
+      <failure message="unapproved expansion">POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected allow, observed allow (HTTP 204)
+Findings: unapproved expansion, capabilities unchanged</failure>
+      <system-out>POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected allow, observed allow (HTTP 204)
+Findings: unapproved expansion, capabilities unchanged</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Matching expectations without expansion approval" name="missing-parameter">
+      <failure message="unapproved expansion">POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected allow, observed allow (HTTP 204)
+Findings: unapproved expansion, capabilities unchanged</failure>
+      <system-out>POST legacy/release · principal builder
+before: expected deny, observed deny (HTTP 403)
+after: expected allow, observed allow (HTTP 204)
+Findings: unapproved expansion, capabilities unchanged</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Matching expectations without expansion approval" name="delete-fixture">
+      <system-out>DELETE legacy/ephemeral · principal builder
+before: expected allow, observed allow (HTTP 204)
+after: expected allow, observed allow (HTTP 204)</system-out>
+    </testcase>
+    <testcase classname="PolicyDelta.Matching expectations without expansion approval" name="read-after-delete">
+      <system-out>GET legacy/ephemeral · principal builder
+before: expected allow, observed allow (HTTP 200)
+after: expected allow, observed allow (HTTP 200)</system-out>
+    </testcase>
+  </testsuite>
+</testsuites>
